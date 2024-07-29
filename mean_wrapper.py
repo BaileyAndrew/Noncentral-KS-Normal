@@ -49,9 +49,10 @@ class NoncentralKS:
         tol: float = 1e-4,
         converge_by: Literal[
             "means",
+            "precisions",
             "objective",
             "pseudo-objective"
-        ] = "means",
+        ] = "precisions",
         verbose: bool = False,
     ) -> tuple[
         tuple[dict[Axis, np.ndarray], float],
@@ -85,6 +86,7 @@ class NoncentralKS:
         converged = False
         num_iters = 0
         prev_means = (self.column_means.copy(), self.full_mean)
+        prev_precisions = self.precision.copy()
         prev_objective = np.inf
 
         while not converged:
@@ -133,6 +135,17 @@ class NoncentralKS:
                     converged = True
                     if verbose:
                         print(f"Converged in {num_iters} iterations")
+            elif converge_by == "precisions":
+                dist = sum(
+                    ((prev_precisions[axis] - self.precision[axis])**2).sum()
+                    for axis in data.structure[key]
+                )
+                dist = np.sqrt(dist)
+
+                if dist < tol:
+                    converged = True
+                    if verbose:
+                        print(f"Converged in {num_iters} iterations")
             elif converge_by == "objective":
                 # Not practically feasible (involves very large logdet)
                 objective = self.objective(orig_data, data.structure[key])
@@ -161,6 +174,7 @@ class NoncentralKS:
 
             # Update the previous mean estimate
             prev_means = (self.column_means.copy(), self.full_mean)
+            prev_precisions = self.precision.copy()
 
         # Reset the data to its original form
         data.dataset[key] = orig_data
