@@ -81,8 +81,6 @@ class NoncentralKS:
             ell: data.structure[key].index(ell) for ell in data.structure[key]
         }
 
-        # TODO: LOOP TILL CONVERGENCE
-
         converged = False
         num_iters = 0
         prev_means = (self.column_means.copy(), self.full_mean)
@@ -112,7 +110,7 @@ class NoncentralKS:
                 self.precision,
                 (self.column_means, self.full_mean),
                 np.prod(orig_data.shape),
-                data.structure[key],
+                [axis for axis in data.structure[key]],
             )
 
             # Check if we should stop
@@ -240,6 +238,7 @@ def mean_estimator(
     axes: list[Axis],
 ) -> tuple[dict[Axis, np.ndarray], float]:
     # Derived parameters for our mean problem
+
     means = initial_mean[0]
     full_mean = initial_mean[1]
     lsum_Psis = {ell: Psis[ell].sum(axis=1) for ell in axes}
