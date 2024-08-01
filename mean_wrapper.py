@@ -78,7 +78,9 @@ class NoncentralKS:
 
         orig_data = data.dataset[key].copy()
         indices = {
-            ell: data.structure[key].index(ell) for ell in data.structure[key]
+            ell: data.structure[key].index(ell)
+            for ell in data.structure[key]
+            if ell not in data.batch_axes
         }
 
         converged = False
@@ -90,7 +92,7 @@ class NoncentralKS:
         while not converged:
             # Remove the mean estimate from the data
             data.dataset = {key: orig_data - self.full_mean}
-            for axis in data.all_axes:
+            for axis in data.all_axes - data.batch_axes:
                 data.dataset = {
                     key: data.dataset[key] - self.column_means[axis].reshape(
                         *(
@@ -111,6 +113,7 @@ class NoncentralKS:
                 (self.column_means, self.full_mean),
                 np.prod(orig_data.shape),
                 [axis for axis in data.structure[key]],
+                data.batch_axes
             )
 
             # Check if we should stop
@@ -125,6 +128,7 @@ class NoncentralKS:
                 squared_dist_1 = sum(
                     ((prev_means[0][axis] - self.column_means[axis])**2).sum()
                     for axis in data.structure[key]
+                    if axis not in data.batch_axes
                 )
                 squared_dist_2 = (prev_means[1] - self.full_mean)**2
                 dist = np.sqrt(squared_dist_1 + squared_dist_2)
@@ -137,6 +141,7 @@ class NoncentralKS:
                 dist = sum(
                     ((prev_precisions[axis] - self.precision[axis])**2).sum()
                     for axis in data.structure[key]
+                    if axis not in data.batch_axes
                 )
                 dist = np.sqrt(dist)
 
@@ -236,9 +241,20 @@ def mean_estimator(
     initial_mean: tuple[dict[Axis, np.ndarray], float],
     d_full: float,
     axes: list[Axis],
+    batch_axes: list[Axis]
 ) -> tuple[dict[Axis, np.ndarray], float]:
-    # Derived parameters for our mean problem
+    
+    # Remove the batch axes from the axes
+    data = data.sum(axis=tuple([
+        axes.index(batch_axis)
+        for batch_axis in batch_axes
+    ]))
+    for batch_axis in batch_axes:
+        index_of_batch = axes.index(batch_axis)
+        axes = axes[:index_of_batch] + axes[index_of_batch+1:]
 
+
+    # Derived parameters for our mean problem
     means = initial_mean[0]
     full_mean = initial_mean[1]
     lsum_Psis = {ell: Psis[ell].sum(axis=1) for ell in axes}
