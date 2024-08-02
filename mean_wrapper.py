@@ -245,6 +245,7 @@ def mean_estimator(
 ) -> tuple[dict[Axis, np.ndarray], float]:
     
     # Remove the batch axes from the axes
+    batch_axes = [batch_axis for batch_axis in batch_axes if batch_axis in axes]
     data = data.sum(axis=tuple([
         axes.index(batch_axis)
         for batch_axis in batch_axes
